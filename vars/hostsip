@@ -1,1 +1,4 @@
-jen
+app01 ansible_host="10.52.10.156"
+db01 ansible_host="10.52.10.67"
+snr ansible_host="10.52.10.176"
+nxs ansible_host=10.52.10.57"
