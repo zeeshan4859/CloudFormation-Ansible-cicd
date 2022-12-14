@@ -9,7 +9,7 @@
         stack_name: DPStack
         disable_rollback: true
         state: present
-        template: "main.yaml"
+        template: "Stack_provisioning/main.yaml"
       register: stack_out
 
     - set_fact:
