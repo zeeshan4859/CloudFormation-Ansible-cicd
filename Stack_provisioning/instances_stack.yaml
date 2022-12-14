@@ -1,0 +1,214 @@
+###################### Parameters ########################
+Parameters:
+  MyVPC:
+    Description: Stack of Jenkins Security Group
+    Type: String
+    Default: vpcstack
+  RoleTempName:
+    Description: Name of the base stack with all infra resources
+    Type: String
+    Default: s3role
+  KeyName: 
+    Type: String
+    Default: us-east-2
+  InstanceType:                                        
+    Type: String
+    Default: t2.micro
+
+
+######################## Mappings ########################
+Mappings:
+  AmiRegionMap:
+    us-east-1:
+      AMI: ami-061dbd1209944525c
+    us-east-2:
+      AMI: ami-04fa64c4b38e36384
+    eu-west-1:
+      AMI: ami-0ea3405d2d2522162
+    us-west-1:
+      AMI: ami-0dd005d3eb03f66e8
+    ap-south-1:
+      AMI: ami-02b5fbc2cb28b77b8 
+    us-west-2:
+      AMI: ami-0a634ae95e11c6f91 
+
+######################## Resources ########################
+
+Resources:
+  JenkinsInst:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: 
+        Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-PSAID"
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap
+        - AmiRegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: "Name"
+          Value: !Join 
+            - " "
+            - - "Jenkins in "
+              - !Ref AWS::Region
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-JNSGID"
+
+########################################
+  AppInst:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: 
+        Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-PSAID"
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap
+        - AmiRegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: "Name"
+          Value: !Join 
+            - ""
+            - - "app01 in "
+              - !Ref AWS::Region
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-APPSGID"
+
+########################################  
+
+  DbInst:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: 
+        Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-PSAID"
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap
+        - AmiRegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: "Name"
+          Value: !Join 
+            - ""
+            - - "db01 in "
+              - !Ref AWS::Region
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-BKSGID"
+
+################################################
+
+  SonarInst:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: 
+        Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-PSAID"
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap
+        - AmiRegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: "Name"
+          Value: !Join 
+            - ""
+            - - "Sonar in "
+              - !Ref AWS::Region
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-APPSGID"
+
+  #################################################
+
+  NuxesInst:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: 
+        Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-PSAID"
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap
+        - AmiRegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: "Name"
+          Value: !Join 
+            - ""
+            - - "Nuxes in "
+              - !Ref AWS::Region
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-APPSGID"
+
+
+#######################################################
+  AnsibleInst:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: 
+        Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-PSAID"
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap
+        - AmiRegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: "Name"
+          Value: !Join 
+            - ""
+            - - "AnsibleInst in "
+              - !Ref AWS::Region
+      SecurityGroupIds: 
+        - Fn::ImportValue:
+            Fn::Sub: "${MyVPC}-JNSGID"
+
+  ##################################################
+Outputs:
+  JenkinsInstancePublicIP:
+    Value: !GetAtt JenkinsInst.PublicIp
+  JenkinsInstancePrivateIP:
+    Value: !GetAtt JenkinsInst.PrivateIp
+  JenkinsInstanceID:
+    Value: !Ref JenkinsInst
+
+  AppInstancePublicIP:
+    Value: !GetAtt AppInst.PublicIp
+  AppInstancePrivateIP:
+    Value: !GetAtt AppInst.PrivateIp
+  AppInstanceID:
+    Value: !Ref AppInst
+
+  dbInstancePublicIP:
+    Value: !GetAtt DbInst.PublicIp
+  dbInstancePrivateIP:
+    Value: !GetAtt DbInst.PrivateIp
+  dbInstanceID:
+    Value: !Ref DbInst
+
+  SonarInstancePublicIP:
+    Value: !GetAtt SonarInst.PublicIp
+  SonarInstancePrivateIP:
+    Value: !GetAtt SonarInst.PrivateIp
+  SonarInstanceID:
+    Value: !Ref SonarInst
+
+  NuxesInstancePublicIP:
+    Value: !GetAtt NuxesInst.PublicIp
+  NuxesInstancePrivateIP:
+    Value: !GetAtt NuxesInst.PrivateIp
+  NuxesInstanceID:
+    Value: !Ref NuxesInst

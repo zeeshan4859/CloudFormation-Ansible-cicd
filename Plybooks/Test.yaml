@@ -1,0 +1,46 @@
+---
+- name: Provision AWS
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Getting Instances Information 
+      ec2_instance_info:
+        region: us-east-2
+        filters:
+          #"tag:stack": MyStack01
+          instance-state-name: [ "running" ]
+      register: ec2_list
+
+
+      ### This will be save in the im memory not permanent 
+    - name: Add instances to inventory
+      add_host:
+        name: "{{ item.public_dns_name }}"
+        ansible_user: ec2-user
+        host_key_checking: false
+        groups: "aws,{{ item.tags.env }},{{ item.tags.app }}"
+      no_log: true
+      when: ec2_list.instances|length > 0
+      loop: "{{ ec2_list['instances'] | flatten(levels=1) }}"
+
+
+
+
+
+
+
+
+
+
+
+
+  # - name: Insert/Update Hosts IP & Name in file provision-stack/group_vars/hostsip
+  #     blockinfile:
+  #       path: hostsip
+  #       block: |
+  #         web01_ip: {{ web01_out.instances[0].private_ip_address }}
+
+  # - name: add line in file
+  #     lineinfile:
+  #       path: /etc/hosts

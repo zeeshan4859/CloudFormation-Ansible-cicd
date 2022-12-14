@@ -1,0 +1,305 @@
+Resources:
+
+  # First, a VPC:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.52.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+       # Value:  !Join ['', [!Ref "AWS::StacksName", "-VPC" ]]  # use the line or bellow that
+        Value:  !Join 
+          - "-"
+          -  - !Ref "AWS::StackName"
+             - "VPC"
+
+  # Our VPC will need internet access:       
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    # Notice how you can't attach an IGW to a VPC unless both are created:
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Now some subnets, 2 public and 2 private:
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.52.10.0/24
+      MapPublicIpOnLaunch: True
+      AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list        
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-Public-A
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.52.20.0/24
+      MapPublicIpOnLaunch: True
+      AvailabilityZone: !Select [ 1, !GetAZs ]    # Get the second AZ in the list  
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-Public-B        
+
+  # Some route tables for our subnets:
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Public
+  PublicRoute1:   # Public route table has direct routing to IGW:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      
+ 
+
+  # Attach the public subnets to public route tables, 
+    
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+####################### Sercurity Groups ###################################
+
+  JenkinsSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    DependsOn: VPC
+    Properties:
+      GroupName: JenkinsSG
+      GroupDescription: Allow SSH & HTTP from myip
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+       
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+
+  backendSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Allow http to client host
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        
+  AppSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Tomcat App Security Goup allow 8080 from insternet
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 81
+          ToPort: 81
+          CidrIp: 0.0.0.0/0
+
+          
+  InboundRule:    # Allaw backendSG for all communication internallt 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+        IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        SourceSecurityGroupId:
+          Fn::GetAtt:
+            - backendSG
+            - GroupId
+        GroupId:
+          Fn::GetAtt:
+            - backendSG
+            - GroupId
+            
+  InboundRule2:   # # Allaw backendSG for all communication from Jenking SG
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+        GroupId:
+          Fn::GetAtt:
+            - backendSG
+            - GroupId
+        IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        SourceSecurityGroupId:
+          Fn::GetAtt:
+            - JenkinsSG
+            - GroupId
+
+  InboundRule3:    # Allow BackendSG for all trafic from AppSG
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSG
+    Properties:
+      GroupId:
+        Fn::GetAtt: 
+          - backendSG
+          - GroupId
+      IpProtocol: tcp
+      FromPort: 0
+      ToPort: 65535
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - AppSG
+          - GroupId
+  InboundRule4:    # Allow AppSG for all trafic grom JenSG
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSG
+    Properties:
+      GroupId:
+        Fn::GetAtt: 
+          - AppSG
+          - GroupId
+      IpProtocol: tcp
+      FromPort: 0
+      ToPort: 65535
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - JenkinsSG
+          - GroupId
+
+
+      
+
+
+
+############################## OutPuts and Export Values ###################
+
+Outputs:
+  JenkinsSecurityGroupID:
+    Description: Jenk Security Group ID
+    Value:
+      Fn::GetAtt:
+      - JenkinsSG
+      - GroupId
+    Export:
+      Name: vpcstack-JNSGID
+
+  BackendSecurityGroupID:
+      Description: Backend Security Group ID
+      Value:
+        Fn::GetAtt:
+          - backendSG
+          - GroupId
+      Export:
+        Name: vpcstack-BKSGID
+
+  AppSecurityGroupID:
+      Description: App Security Group ID
+      Value:
+        Fn::GetAtt:
+          - AppSG
+          - GroupId
+      Export: 
+        Name: vpcstack-APPSGID
+
+  VPCID:
+      Description: Get the VPC ID
+      Value:
+        Fn::GetAtt:
+          - VPC
+          - VpcId
+      Export:
+        Name: vpcstack-ID
+    
+  PublicSubnetAID:
+      Description: Get the PublicSubnetA ID
+      Value: !Ref PublicSubnetA
+      Export:
+        Name: vpcstack-PSAID
+
+#        Fn::Sub: "${AWS::StackName}-SecurityGroupID"
+
+#############################################################################      
+
+        ########### Not Required Private Subnets
+  # PrivateSubnetA:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     CidrBlock: 10.52.50.0/24
+  #     AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list  
+  #     Tags:
+  #     - Key: Name
+  #       Value: !Sub ${AWS::StackName}-Private-A
+  # PrivateSubnetB:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     CidrBlock: 10.52.60.0/24
+  #     AvailabilityZone: !Select [ 1, !GetAZs ]    # Get the second AZ in the list  
+  #     Tags:
+  #     - Key: Name
+  #       Value: !Sub ${AWS::StackName}-Private-B
+
+
+   # Here is a private route table:
+  # PrivateRouteTable:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     Tags:
+  #     - Key: Name
+  #       Value: Private
+  # PrivateRoute1:            # Private route table can access web via NAT (created below)
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref PrivateRouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+      #NatGatewayId: !Ref 
+      
+
+  # Attach the private subnets to private route tables:  
+  # PrivateSubnetARouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnetA
+  #     RouteTableId: !Ref PrivateRouteTable
+  # PrivateSubnetBRouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnetB
+  #     RouteTableId: !Ref PrivateRouteTable
