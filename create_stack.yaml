@@ -13,12 +13,12 @@
       register: stack_out
 
     - set_fact:
-        instances_stack: instances_stack
+        instances_stack: DPStack-InstancesStack-74ZMMQDN7G0Z
 
 
     - name: get info
       amazon.aws.cloudformation_info:
-        stack_name: instances_stackssss
+        stack_name: "{{ instances_stack }}"
       register: instances_stack_out
 
     - debug:
@@ -26,7 +26,7 @@
 
     - name: Insert/Update Hosts IP & Name in file provision-stack/group_vars/hostsip
       blockinfile:
-        path: hostsip
+        path: vars/hostsip
         block: |
           JenkinsIP: "{{ instances_stack_out.cloudformation[instances_stack].stack_outputs.JenkinsInstancePrivateIP }}"
 
