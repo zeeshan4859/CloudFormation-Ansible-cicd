@@ -13,7 +13,7 @@ Resources:
 
   InstancesStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: VPC
+    DependsOn: VpcStack
     Properties:
       TemplateURL: https://s3.amazonaws.com/zee4859/ProvisionStack/StackTmp/instances_stack.yaml
       # Parameters:
