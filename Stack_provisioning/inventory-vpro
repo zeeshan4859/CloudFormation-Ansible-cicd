@@ -1,0 +1,29 @@
+# BEGIN ANSIBLE MANAGED BLOCK
+app01 ansible_host="10.52.10.156"
+db01 ansible_host="10.52.10.67"
+snr ansible_host="10.52.10.176"
+nxs ansible_host=10.52.10.57"
+
+cntl ansible_host=127.0.0.1 ansible_connection=local
+[appsrvgrp]
+app01
+[dbsrvgrp]
+db01
+[snrsrvgrp]
+snr
+[nxssrvgrp]
+nxs
+[control]
+cntl
+[stack_inst:children]
+websrvgrp
+appsrvgrp
+snrsrvgrp
+nxssrvgrp
+
+
+[stack_inst:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=us-east-2.pem
+#ansible_python_interpreter=/usr/bin/python3
+# END ANSIBLE MANAGED BLOCK
