@@ -18,7 +18,7 @@
 
     - name: get info
       amazon.aws.cloudformation_info:
-        stack_name: "{{ instances_stack }}"
+        stack_name: DPStack-InstancesStack-74ZMMQDN7G0Z
       register: instances_stack_out
 
     - debug:
@@ -29,21 +29,11 @@
         path: vars/hostsip
         block: |
           JenkinsIP: "{{ instances_stack_out.cloudformation[instances_stack].stack_outputs.JenkinsInstancePrivateIP }}"
+          app01: "{{ instances_stack_out.cloudformation[instances_stack].stack_outputs.AppInstancePrivateIP }}"
+          db01: "{{ instances_stack_out.cloudformation[instances_stack].stack_outputs.dbInstancePrivateIP }}"
+          sonar: "{{ instances_stack_out.cloudformation[instances_stack].stack_outputs.SonarInstancePrivateIP }}"
+          nuxes: "{{ instances_stack_out.cloudformation[instances_stack].stack_outputs.NuxesInstancePrivateIP }}"
 
-
-    # - name: Getting Instances Information 
-    #   ec2_instance_info:
-    #     region: us-east-2
-    #     filters:
-    #       "tag:stack": MyStack01
-    #       instance-state-name: [ "running" ]
-    #   register: ec2_list
-
-    # - name: Insert/Update Hosts IP & Name in file provision-stack/group_vars/hostsip
-    #   blockinfile:
-    #     path: hostsip
-    #     block: |
-    #       web01_ip: {{ ec2_list.tagged_instances[0].private_ip }}
 
     # - name: Add instances to inventory
     #   add_host:
