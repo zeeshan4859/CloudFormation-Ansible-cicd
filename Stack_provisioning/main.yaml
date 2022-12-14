@@ -1,7 +1,7 @@
-Parameters:
-  KeyPair:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: "Choose the keyPair from existing KeyPairs"
+# Parameters:
+#   KeyPair:
+#     Type: AWS::EC2::KeyPair::KeyName
+#     Description: "Choose the keyPair from existing KeyPairs"
 
 Resources:
 
@@ -16,7 +16,7 @@ Resources:
     DependsOn: VPC
     Properties:
       TemplateURL: https://s3.amazonaws.com/zee4859/ProvisionStack/StackTmp/instances_stack.yaml
-      Parameters:
-        KeyName: !Ref KeyPair
+      # Parameters:
+      #   KeyName: !Ref KeyPair
 
 
